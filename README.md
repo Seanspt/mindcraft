@@ -1,4 +1,5 @@
 # Mindcraft 🧠⛏️
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Seanspt/mindcraft)
 
 Crafting minds for Minecraft with LLMs and [Mineflayer!](https://prismarinejs.github.io/mineflayer/#/)
 
