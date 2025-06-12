@@ -1,0 +1,49 @@
+code_task:
+  description: >
+    You will create a mindcraft bot skill using java script. 
+    Here are some examples of skills that are already created:
+
+    Skill Examples
+    --------------
+    {skill_examples}
+    
+    these are the instructions for the new skill:
+
+    Instructions
+    ------------
+    {skill}
+
+    The comon instruction for all skills is that:
+    If the job is done, return true.
+    Otherwise, return false. And provide the reason why it Cannot be done.
+    
+  expected_output: >
+    Your Final answer must be the full java script function of the skill, only the fully documented function code and nothing else.
+
+review_task:
+  description: >
+    You will create a mindcraft bot skill using java script, these are the instructions:
+
+    Instructions
+    ------------
+    {skill}
+    
+    Using the code you got, check for errors. Check for logic errors,
+    syntax errors, missing imports, variable declarations, mismatched brackets,
+    and security vulnerabilities.
+  expected_output: >
+        Your Final answer must be the full java script function of the skill, only the fully documented function code and nothing else.
+
+
+evaluate_task:
+  description: >
+    You will create a mindcraft bot skill using java script, these are the instructions:
+
+    Instructions
+    ------------
+    {skill}
+
+    You will look over the code to insure that it is complete and
+    does the job that it is supposed to do.
+  expected_output: >
+    Your Final answer must be the full java script function of the skill, only the fully documented function code and nothing else.

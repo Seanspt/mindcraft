@@ -1,0 +1,15 @@
+#Input examples for a skill description
+
+cut_down_a_tree: >
+  """
+  cutDownATree:
+
+  This is a skill that will cut down a tree. From the bottom log block to the top.
+  Every log block must be cut and none should be left.
+  Some trees may have branches that need to be searched and cut. 
+  Some trees may be 2x2 blocks on each layer, they are usually high. you can cut stair out of the main trunk. And go to the top. Then go back down while cutting.
+  Try to tower up if needed to reach the top.
+  Don't broke blocks from other trees. Focus on the tree you are cutting.
+  When finished cutting, clean up the tower blocks if any were left.
+  """
+

@@ -464,4 +464,12 @@ export const actionsList = [
             await skills.digDown(agent.bot, distance)
         })
     },
+    {
+        name: '!cutDownATree',
+        description: 'Cuts down a tree at the current location.',
+        params: {'logType': { type: 'string', description: 'log type to cut',}},
+        perform: runAsAction(async (agent, logType) => {
+            await skills.cutDownATree(agent.bot, logType)
+        })
+    },
 ];

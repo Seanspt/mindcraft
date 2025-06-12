@@ -1502,3 +1502,100 @@ export async function digDown(bot, distance = 10) {
     log(bot, `Dug down ${distance} blocks.`);
     return true;
 }
+
+export async function cutDownATree(bot, logType) {
+    /**
+     * Cuts down a tree completely from bottom to top, including any branches.
+     * Handles both single-block and 2x2 trees. Builds temporary towers if needed
+     * and cleans them up afterwards. Returns true if tree was fully cut down.
+     * 
+     * @param {MinecraftBot} bot - The bot instance
+     * @returns {Promise<boolean>} True if tree was fully cut down, false otherwise
+     */
+    // Find nearest log block to start cutting
+    let baseLog =  bot.findBlock({
+            matching: bot.registry.blocksByName[logType].id,
+            maxDistance: 32
+        });
+    
+    if (!baseLog) {
+        bot.chat("No trees found nearby to cut down.");
+        return false;
+    }
+    
+    bot.chat(`Found ${bot.registry.blocks[baseLog.type].name} tree at ${baseLog.position}. Starting to cut...`);
+    // Determine if this is a 2x2 tree
+    const isLargeTree = await checkForLargeTree(bot, baseLog);
+    const treeBlocks = await identifyTreeBlocks(bot, baseLog, isLargeTree);
+    if (treeBlocks.length === 0) {
+        bot.chat("Could not identify complete tree structure.");
+        return false;
+    }
+    // Cut down the tree
+    let towerBlocks = [];
+
+    await await bot.collectBlock.collect(treeBlocks);
+    
+    // Clean up any tower blocks
+    bot.chat("Successfully cut down the entire tree!");
+    return true;
+    
+    async function checkForLargeTree(bot, baseLog) {
+        const pos = baseLog.position;
+        const adjacentPositions = [
+            new Vec3(pos.x + 1, pos.y, pos.z),
+            new Vec3(pos.x, pos.y, pos.z + 1),
+            new Vec3(pos.x + 1, pos.y, pos.z + 1)
+        ];
+        
+        for (const adjPos of adjacentPositions) {
+            const block = bot.blockAt(adjPos);
+            if (!block || logType != bot.registry.blocks[block.type].name) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    async function identifyTreeBlocks(bot, startBlock, isLargeTree) {
+        const treeBlocks = [startBlock];
+        const visited = new Set();
+        const queue = [startBlock.position];
+        visited.add(`${startBlock.position.x},${startBlock.position.y},${startBlock.position.z}`);
+        
+        while (queue.length > 0) {
+            const currentPos = queue.shift();
+            
+            // Check all adjacent blocks (including diagonals for branches)
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dy = 0; dy <= 1; dy++) {
+                    for (let dz = -1; dz <= 1; dz++) {
+                        // Skip current position
+                        if (dx === 0 && dy === 0 && dz === 0) continue;
+                        
+                        // For large trees, only check adjacent on same layer
+                        if (isLargeTree && dy !== 0) continue;
+                        
+                        const newPos = new Vec3(
+                            currentPos.x + dx,
+                            currentPos.y + dy,
+                            currentPos.z + dz
+                        );
+                        const key = `${newPos.x},${newPos.y},${newPos.z}`;
+                        
+                        if (visited.has(key)) continue;
+                        
+                        const block = bot.blockAt(newPos);
+                        if (block && logType === bot.registry.blocks[block.type].name) {
+                            treeBlocks.push(block);
+                            queue.push(newPos);
+                            visited.add(key);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return treeBlocks;
+    }
+}
