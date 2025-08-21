@@ -414,7 +414,9 @@ export class Prompter {
         await this.checkCooldown();
         let prompt = this.profile.image_analysis;
         prompt = await this.replaceStrings(prompt, messages, null, null, null);
-        return await this.vision_model.sendVisionRequest(messages, prompt, imageBuffer);
+        let resp = await this.vision_model.sendVisionRequest(messages, prompt, imageBuffer);
+        await this._saveLog(prompt, messages, resp, 'vision');
+        return resp;
     }
 
     async promptGoalSetting(messages, last_goals) {
