@@ -1,4 +1,5 @@
 import { exec } from 'child_process';
+import settings from '../../settings.js';
 
 let speakingQueue = [];
 let isSpeaking = false;
@@ -18,17 +19,23 @@ function processQueue() {
 
   isSpeaking = true;
   const textToSpeak = speakingQueue.shift();
-  const isWin = process.platform === "win32";
-  const isMac = process.platform === "darwin";
-
+  
   let command;
 
-  if (isWin) {
-    command = `powershell -Command "Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Rate = 2; $s.Speak(\\"${textToSpeak}\\"); $s.Dispose()"`;
-  } else if (isMac) {
-    command = `say "${textToSpeak}"`;
+  if (settings.tts_engine === 'cosyvoice') {
+    const escapedText = textToSpeak.replace(/"/g, '\"');
+    command = `node src/agent/cosyvoice-client.js --tts_text "${escapedText}"`;
   } else {
-    command = `espeak "${textToSpeak}"`;
+    const isWin = process.platform === "win32";
+    const isMac = process.platform === "darwin";
+
+    if (isWin) {
+        command = `powershell -Command "Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Rate = 2; $s.Speak(\" ${textToSpeak} \"); $s.Dispose()"`;
+    } else if (isMac) {
+        command = `say "${textToSpeak}"`;
+    } else {
+        command = `espeak "${textToSpeak}"`;
+    }
   }
 
   exec(command, (error, stdout, stderr) => {

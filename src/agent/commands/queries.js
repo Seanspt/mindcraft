@@ -4,6 +4,7 @@ import { getCommandDocs } from './index.js';
 import convoManager from '../conversation.js';
 import { checkLevelBlueprint, checkBlueprint } from '../tasks/construction_tasks.js';
 import { load } from 'cheerio';
+import { SchematicLibrary } from '../library/schematic_library.js';
 
 const pad = (str) => {
     return '\n' + str + '\n';
@@ -296,6 +297,16 @@ export const queryList = [
         description: 'Lists all available commands and their descriptions.',
         perform: async function (agent) {
             return getCommandDocs(agent);
+        }
+    },
+    {
+        name: '!searchSchematic',
+        description: 'A schematic library which you can search for buildings and constructions. Use this command if it is related to building something.',
+        params: {
+            'query': { type: 'string', description: 'The description to search for the schematic.' }
+        },
+        perform: async function (agent, query) {
+            return SchematicLibrary.getInstance().query(agent, query);
         }
     },
 ];

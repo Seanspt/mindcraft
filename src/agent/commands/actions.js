@@ -464,4 +464,22 @@ export const actionsList = [
             await skills.digDown(agent.bot, distance)
         })
     },
+    // {
+    //     name: '!buildSchematic',
+    //     description: 'build a building provide in the schematic file',
+    //     params: {'schematicId': { type: 'string', description: 'schematic id to build'}},
+    //     perform: runAsAction(async (agent, schematicFilePath) => {
+    //         await skills.buildSchematic(agent.bot, schematicFilePath)
+    //     })
+    // },
+    {
+        name: '!executeWorldEditCommand',
+        description: 'Executes a WorldEdit command like `schematic load {schematicID}.schematic`, `paste`, `undo`.',
+        params: {
+            'command': { type: 'string', description: 'The WorldEdit command to execute (e.g., "schematic load {schematicID}.schematic", "paste", "undo").' }
+        },
+        perform: runAsAction(async (agent, command) => {
+            await skills.executeWorldEditCommand(agent.bot, command);
+        })
+    },
 ];

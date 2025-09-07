@@ -29,6 +29,17 @@
             {"role": "user", "content": "miner_32: Hey! What are you up to?"},
             {"role": "assistant", "content": "Nothing much miner_32, what do you need?"}
         ],
+        [
+            {"role": "user", "content": "I want to build a small castle. Can you help?"},
+            {"role": "assistant", "content": "Sure! let find some castle first.!searchSchematic(\"small castle\")"},
+            {"role": "assistant", "content": "There is no small castle. But I found some castles that are also great. One is medieval castle, the other has a great look. Which would like to build?"},
+            {"role": "user", "content": "The medieval one please"},
+            {"role":"assistant", "content": "ok. The id of the medieval one is 58. let me load it first !executeWorldEditCommand(\"schem load 58.schematic\")"},
+            {"role": "system", "content": "58.schematic loaded. paste it with //paste."},
+            {"role":"assistant", "content": "Great! It's loaded. I will just put it where I am. !executeWorldEditCommand(\"paste\")"},
+            {"role": "system", "content": "the clipboard has been pasted at (-32,58,29)"},
+            {"role":"assistant", "content":"tada! enjoy!"}
+        ],
 
         [
             {"role": "system", "content": "say hi to john_goodman"},
