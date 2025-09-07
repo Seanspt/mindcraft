@@ -3,6 +3,7 @@ import { getKey, hasKey } from '../utils/keys.js';
 import { strictFormat } from '../utils/text.js';
 
 export class GPT {
+    static prefix = 'openai';
     constructor(model_name, url, params) {
         this.model_name = model_name;
         this.params = params;
@@ -20,28 +21,21 @@ export class GPT {
     }
 
     async sendRequest(turns, systemMessage, stop_seq='***') {
-        let messages = [{'role': 'system', 'content': systemMessage}].concat(turns);
-        messages = strictFormat(messages);
-        const pack = {
-            model: this.model_name || "gpt-3.5-turbo",
-            messages,
-            stop: stop_seq,
-            ...(this.params || {})
-        };
-        if (this.model_name.includes('o1') || this.model_name.includes('o3') || this.model_name.includes('5')) {
-            delete pack.stop;
-        }
+        let messages = strictFormat(turns);
+        let model = this.model_name || "gpt-4o-mini";
 
         let res = null;
 
         try {
-            console.log('Awaiting openai api response from model', this.model_name)
-            // console.log('Messages:', messages);
-            let completion = await this.openai.chat.completions.create(pack);
-            if (completion.choices[0].finish_reason == 'length')
-                throw new Error('Context length exceeded'); 
+            console.log('Awaiting openai api response from model', model)
+            const response = await this.openai.responses.create({
+                model: model,
+                instructions: systemMessage,
+                input: messages,
+                ...(this.params || {})
+            });
             console.log('Received.')
-            res = completion.choices[0].message.content;
+            res = response.output_text;
         }
         catch (err) {
             if ((err.message == 'Context length exceeded' || err.code == 'context_length_exceeded') && turns.length > 1) {
@@ -63,12 +57,10 @@ export class GPT {
         imageMessages.push({
             role: "user",
             content: [
-                { type: "text", text: systemMessage },
+                { type: "input_text", text: systemMessage },
                 {
-                    type: "image_url",
-                    image_url: {
-                        url: `data:image/jpeg;base64,${imageBuffer.toString('base64')}`
-                    }
+                    type: "input_image",
+                    image_url: `data:image/jpeg;base64,${imageBuffer.toString('base64')}`
                 }
             ]
         });
@@ -89,5 +81,32 @@ export class GPT {
 
 }
 
+const sendAudioRequest = async (text, model, voice, url) => {
+    const payload = {
+        model: model,
+        voice: voice,
+        input: text
+    }
 
+    let config = {};
 
+    if (url)
+        config.baseURL = url;
+
+    if (hasKey('OPENAI_ORG_ID'))
+        config.organization = getKey('OPENAI_ORG_ID');
+
+    config.apiKey = getKey('OPENAI_API_KEY');
+
+    const openai = new OpenAIApi(config);
+
+    const mp3 = await openai.audio.speech.create(payload);
+    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const base64 = buffer.toString("base64");
+    return base64;
+}
+
+export const TTSConfig = {
+    sendAudioRequest: sendAudioRequest,
+    baseUrl: 'https://api.openai.com/v1',
+}

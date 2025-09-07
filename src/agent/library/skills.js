@@ -228,28 +228,33 @@ export async function smeltItem(bot, itemName, num=1) {
     await furnace.putInput(mc.getItemId(itemName), null, num);
     // wait for the items to smelt
     let total = 0;
-    let collected_last = true;
     let smelted_item = null;
     await new Promise(resolve => setTimeout(resolve, 200));
+    let last_collected = Date.now();
     while (total < num) {
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        console.log('checking...');
-        let collected = false;
+        await new Promise(resolve => setTimeout(resolve, 1000));
         if (furnace.outputItem()) {
             smelted_item = await furnace.takeOutput();
             if (smelted_item) {
                 total += smelted_item.count;
-                collected = true;
+                last_collected = Date.now();
             }
         }
-        if (!collected && !collected_last) {
-            break; // if nothing was collected this time or last time
+        if (Date.now() - last_collected > 11000) {
+            break; // if nothing has been collected in 11 seconds, stop
         }
-        collected_last = collected;
         if (bot.interrupt_code) {
             break;
         }
     }
+    // take all remaining in input/fuel slots
+    if (furnace.inputItem()) {
+        await furnace.takeInput();
+    }
+    if (furnace.fuelItem()) {
+        await furnace.takeFuel();
+    }
+
     await bot.closeWindow(furnace);
 
     if (placedFurnace) {
@@ -756,8 +761,14 @@ export async function equip(bot, itemName) {
      **/
     let item = bot.inventory.slots.find(slot => slot && slot.name === itemName);
     if (!item) {
-        log(bot, `You do not have any ${itemName} to equip.`);
-        return false;
+        if (bot.game.gameMode === "creative") {
+            await bot.creative.setInventorySlot(36, mc.makeItem(item_name, 1));
+            block = bot.inventory.items().find(item => item.name === item_name);
+        }
+        else {
+            log(bot, `You do not have any ${itemName} to equip.`);
+            return false;
+        }
     }
     if (itemName.includes('leggings')) {
         await bot.equip(item, 'legs');
@@ -773,6 +784,9 @@ export async function equip(bot, itemName) {
     }
     else if (itemName.includes('shield')) {
         await bot.equip(item, 'off-hand');
+    }
+    else if (itemName === 'hand') {
+        await bot.unequip('hand');
     }
     else {
         await bot.equip(item, 'hand');
@@ -1040,7 +1054,7 @@ export async function goToGoal(bot, goal) {
         log(bot, `Found destructive path.`);
     }
     else {
-        log(bot, `Could not find a path to goal, attempting to navigate anyway using destructive movements.`);
+        log(bot, `Path not found, but attempting to navigate anyway using destructive movements.`);
     }
 
     const doorCheckInterval = startDoorInterval(bot);
@@ -1288,11 +1302,29 @@ export async function followPlayer(bot, username, distance=4) {
     while (!bot.interrupt_code) {
         await new Promise(resolve => setTimeout(resolve, 500));
         // in cheat mode, if the distance is too far, teleport to the player
-        if (bot.modes.isOn('cheat') && bot.entity.position.distanceTo(player.position) > 100 && player.isOnGround) {
+        const distance_from_player = bot.entity.position.distanceTo(player.position);
+
+        const teleport_distance = 100;
+        const ignore_modes_distance = 30; 
+        const nearby_distance = distance + 2;
+
+        if (distance_from_player > teleport_distance && bot.modes.isOn('cheat')) {
+            // teleport with cheat mode
             await goToPlayer(bot, username);
         }
-        const is_nearby = bot.entity.position.distanceTo(player.position) <= distance + 2;
-        if (is_nearby) {
+        else if (distance_from_player > ignore_modes_distance) {
+            // these modes slow down the bot, and we want to catch up
+            bot.modes.pause('item_collecting');
+            bot.modes.pause('hunting');
+            bot.modes.pause('torch_placing');
+        }
+        else if (distance_from_player <= ignore_modes_distance) {
+            bot.modes.unpause('item_collecting');
+            bot.modes.unpause('hunting');
+            bot.modes.unpause('torch_placing');
+        }
+
+        if (distance_from_player <= nearby_distance) {
             clearInterval(doorCheckInterval);
             doorCheckInterval = null;
             bot.modes.pause('unstuck');
@@ -1561,30 +1593,6 @@ export async function tillAndSow(bot, x, y, z, seedType=null) {
     return true;
 }
 
-export async function activateNearestBlock(bot, type) {
-    /**
-     * Activate the nearest block of the given type.
-     * @param {MinecraftBot} bot, reference to the minecraft bot.
-     * @param {string} type, the type of block to activate.
-     * @returns {Promise<boolean>} true if the block was activated, false otherwise.
-     * @example
-     * await skills.activateNearestBlock(bot, "lever");
-     * **/
-    let block = world.getNearestBlock(bot, type, 16);
-    if (!block) {
-        log(bot, `Could not find any ${type} to activate.`);
-        return false;
-    }
-    if (bot.entity.position.distanceTo(block.position) > 4.5) {
-        let pos = block.position;
-        bot.pathfinder.setMovements(new pf.Movements(bot));
-        await goToGoal(bot, new pf.goals.GoalNear(pos.x, pos.y, pos.z, 4));
-    }
-    await bot.activateBlock(block);
-    log(bot, `Activated ${type} at x:${block.position.x.toFixed(1)}, y:${block.position.y.toFixed(1)}, z:${block.position.z.toFixed(1)}.`);
-    return true;
-}
-
 export async function digDown(bot, distance = 10) {
     /**
      * Digs down a specified distance. Will stop if it reaches lava, water, or a fall of >=4 blocks below the bot.
@@ -1641,3 +1649,51 @@ export async function digDown(bot, distance = 10) {
     log(bot, `Dug down ${distance} blocks.`);
     return true;
 }
+
+export async function useToolOn(bot, toolName, targetName) {
+    /**
+     * Equip a tool and use it on the nearest target.
+     * @param {MinecraftBot} bot
+     * @param {string} toolName - item name of the tool to equip, or "hand" for no tool.
+     * @param {string} targetName - entity type, block type, or "nothing" for no target
+     * @returns {Promise<boolean>} true if action succeeded
+     */
+    if (toolName === 'hand') {
+        await bot.unequip('hand');
+    }
+    else {
+        const equipped = await equip(bot, toolName);
+        if (!equipped) return false;
+    }
+
+    if (toolName.includes('bucket') && !targetName.includes('cow')) {
+        log(bot, `KNOWN ISSUE: Buckets do not work, except on cows.`);
+        return false;
+    }
+    targetName = targetName.toLowerCase();
+    if (targetName === 'nothing') {
+        await bot.activateItem();
+        log(bot, `Used ${toolName}.`);
+        return true;
+    } else if (world.isEntityType(targetName)) {
+        const entity = world.getNearestEntityWhere(bot, e => e.name === targetName, 64);
+        if (!entity) {
+            log(bot, `Could not find any ${targetName}.`);
+            return false;
+        }
+        await goToPosition(bot, entity.position.x, entity.position.y, entity.position.z);
+        await bot.useOn(entity);
+    } else {
+        const block = world.getNearestBlock(bot, targetName, 64);
+        if (!block) {
+            log(bot, `Could not find any ${targetName}.`);
+            return false;
+        }
+        await goToPosition(bot, block.position.x, block.position.y, block.position.z, 2);
+        await bot.lookAt(block.position);
+        await bot.activateBlock(block);
+        log(bot, `Used ${toolName} on ${targetName}.`);
+    }
+
+    return true;
+ }
